@@ -24,23 +24,40 @@ pub mod errors {
 
 use errors::*;
 use std::io::prelude::*;
-use std::net::TcpStream;
+use std::net::{TcpStream, TcpListener};
 use time::{Duration, PreciseTime};
 use std::thread;
 
 
-pub struct Server {}
-pub struct ServerConn {}
-
-impl Server {
-    // returns a Client
-    pub fn accept(&self) -> Result<ServerConn> {
-        Err(ErrorKind::NotImplemented("accept".into()).into())
-    }
+pub struct Server {
+    sock: TcpListener,
 }
 
-impl ServerConn {
-    pub fn handle() {}
+// A simple single-threaded server will do for now
+impl Server {
+    pub fn listen(address: String) -> Result<Server> {
+        let l = TcpListener::bind(address)?;
+        Ok(Server { sock: l })
+    }
+
+    // serves forever
+    pub fn serve(&self) -> Result<()> {
+        let mut buffer = [0; 1];
+        loop {
+            let (mut s, _) = self.sock.accept()?;
+            s.set_nodelay(true)?;
+            loop {
+                s.read(&mut buffer)?;
+                match s.write(&[10]) {
+                    Ok(_) => {}
+                    Err(_) => {
+                        break;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 // Struct that tracks a test run
@@ -71,9 +88,10 @@ impl Run {
         for _ in 0..self.tries {
             match self.run_once() {
                 Ok(rr) => out.push(rr),
-                Err(_) => println!("error?"),
+                Err(e) => return Err(e),
             }
-            std::thread::sleep(std::time::Duration::from_millis(20));
+            // Sleep for 2ms between runs
+            std::thread::sleep(std::time::Duration::from_millis(2));
 
         }
 
@@ -85,7 +103,6 @@ impl Run {
         let mut s = TcpStream::connect(self.address.clone())?;
         let end = PreciseTime::now();
 
-        println!("connect ok!");
         let mut rr = RunResult {
             connect_duration: start.to(end),
             ping_durations: vec![],
@@ -98,7 +115,6 @@ impl Run {
             match self.ping(&s) {
                 Ok(d) => {
                     rr.ping_durations.push(d);
-                    println!("Ping OK!");
                 }
                 Err(e) => rr.failed_pings += 1,
             };
