@@ -1,0 +1,17 @@
+[package]
+name = "tcpbench"
+version = "0.1.0"
+authors = ["Casey Callendrello <casey.callendrello@coreos.com>"]
+
+[dependencies]
+error-chain = "0.11.0"
+time = "0.1.39"
+clap = "2.29.1"
+histo = "0.1.0"
+
+[[bin]]
+name = "tcpbench"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
